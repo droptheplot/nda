@@ -12,7 +12,8 @@ lazy val root = (project in file("."))
       "dev.zio" %% "zio-test" % zioVersion % Test,
       "dev.zio" %% "zio-interop-cats" % "3.3.0-RC7",
       "org.http4s" %% "http4s-dsl" % http4sVersion,
-      "org.http4s" %% "http4s-blaze-server" % http4sVersion
+      "org.http4s" %% "http4s-blaze-server" % http4sVersion,
     ),
     testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
   )
+  .enablePlugins(SbtTwirl)

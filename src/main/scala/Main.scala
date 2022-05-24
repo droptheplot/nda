@@ -1,7 +1,9 @@
-import org.http4s.*
+import org.http4s.{DefaultCharset, *}
 import org.http4s.blaze.server.BlazeServerBuilder
 import org.http4s.dsl.Http4sDsl
+import org.http4s.headers.`Content-Type`
 import org.http4s.implicits.*
+import play.twirl.api.{Content, Html, JavaScript, Txt, Xml}
 import repositories.*
 import zio.*
 import zio.interop.catz.*
@@ -40,8 +42,8 @@ object Main extends ZIOAppDefault:
       .of[Task] {
         case GET -> Root =>
           for {
-            keys <- entriesRepository.list
-            response <- Ok(keys.mkString("\n"))
+            entities <- entriesRepository.list
+            response <- Ok(views.html.index(entities, None))
           } yield response
         case req @ POST -> Root =>
           req.decode[UrlForm] { urlForm =>
@@ -53,18 +55,32 @@ object Main extends ZIOAppDefault:
                     .values
                     .get("value")
                     .flatMap(_.headOption)
-                    .flatMap(str => Option.when(str.isBlank)(str))
+                    .flatMap(str => Option.when(!str.isBlank)(str))
                 }
                 .orElseFail(new Throwable("`value` is missing"))
               _ <- entriesRepository.create(id, value)
-              response <- Ok(id.toString)
+              response <- Ok(views.html.redirect(s"/$id"))
             } yield response
           }.catchAll { error =>
-            Ok(error.toString)
+            for {
+              entities <- entriesRepository.list
+              response <- Ok(views.html.index(entities, Some(error.getMessage)))
+            } yield response
           }
         case GET -> Root / UUIDVar(id) =>
           for {
-            value <- entriesRepository.get(id)
-            response <- Ok(value.toString)
+            valueOpt <- entriesRepository.get(id)
+            response <- valueOpt
+              .map(value => Ok(views.html.entity(id, value)))
+              .getOrElse(Ok(views.html.notFound()))
           } yield response
       }
+
+  implicit def htmlContentEncoder(implicit charset: Charset = DefaultCharset): EntityEncoder[Task, Html] =
+    contentEncoder(MediaType.text.html)
+
+  private def contentEncoder[C <: Content](mediaType: MediaType)(implicit charset: Charset): EntityEncoder[Task, C] =
+    EntityEncoder
+      .stringEncoder
+      .contramap[C](content => content.body)
+      .withContentType(`Content-Type`(mediaType, charset))

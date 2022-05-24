@@ -1,0 +1,31 @@
+@import java.util.UUID
+
+@(entityIds: List[UUID], errorOpt: Option[String])
+
+<h1>Entities</h1>
+
+@for(error <- errorOpt) {
+  <div>
+  @error
+  </div>
+}
+
+<div>
+  <form action="/" method="POST">
+    <div>
+      <label for="value">Text</label>
+      <textarea id="value" name="value" rows="5" cols="33"></textarea>
+    </div>
+    <div>
+      <button class="btn btn-primary">Send</button>
+    </div>
+  </form>
+</div>
+
+<div>
+@for(entityId <- entityIds) {
+  <div>
+    <a href="/@entityId">@entityId</a>
+  </div>
+}
+</div>

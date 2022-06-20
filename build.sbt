@@ -3,6 +3,7 @@ ThisBuild / version := "0.1.0-SNAPSHOT"
 
 val http4sVersion = "1.0.0-M30"
 val zioVersion = "2.0.0-RC6"
+val doobieVersion = "1.0.0-RC2"
 
 lazy val root = (project in file("."))
   .settings(
@@ -13,6 +14,9 @@ lazy val root = (project in file("."))
       "dev.zio" %% "zio-interop-cats" % "3.3.0-RC7",
       "org.http4s" %% "http4s-dsl" % http4sVersion,
       "org.http4s" %% "http4s-blaze-server" % http4sVersion,
+      "ch.qos.logback" % "logback-classic" % "1.2.3",
+      "org.tpolecat" %% "doobie-core" % doobieVersion,
+      "org.tpolecat" %% "doobie-postgres" % doobieVersion,
     ),
     testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
   )

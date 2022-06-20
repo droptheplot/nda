@@ -1,38 +1,60 @@
-import org.http4s.{DefaultCharset, *}
+import doobie.util.transactor.Transactor
+import doobie.postgres.implicits.*
+import org.http4s.*
 import org.http4s.blaze.server.BlazeServerBuilder
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.`Content-Type`
 import org.http4s.implicits.*
-import play.twirl.api.{Content, Html, JavaScript, Txt, Xml}
+import play.twirl.api.*
 import repositories.*
 import zio.*
 import zio.interop.catz.*
 import zio.interop.catz.implicits.*
 
 import java.util.UUID
+import scala.jdk.CollectionConverters.*
 
 object Main extends ZIOAppDefault:
-  val ref = ZLayer.fromZIO(Ref.make(Map.empty[UUID, String]))
+  val configLayer = ZLayer.fromZIO {
+    for {
+      url <- ZIO.fromOption(scala.util.Properties.envOrNone("URL"))
+      user = scala.util.Properties.envOrElse("USER", "nda")
+      password <- ZIO.fromOption(scala.util.Properties.envOrNone("PASSWORD"))
+      host = scala.util.Properties.envOrElse("HOST", "localhost")
+      port = scala.util.Properties.envOrElse("PORT", "3000").toInt
+      config = Config(host, port, Config.Database(url, user, password))
+    } yield config
+  }
 
-  def run =
-    (for {
-      entriesRepository <- ZIO.service[EntriesRepository]
-      httpRoutes = routes(entriesRepository)
-      httpApp <- ZIO
-        .runtime
-        .flatMap { runtime =>
-          BlazeServerBuilder[Task]
-            .withExecutionContext(runtime.executor.asExecutionContext)
-            .bindHttp(3000, "localhost")
-            .withHttpApp(httpRoutes.orNotFound)
-            .serve
-            .compile
-            .drain
-        }
+  val refLayer = ZLayer.fromZIO(Ref.make(Map.empty[UUID, String]))
 
-    } yield httpApp)
-      .exitCode
-      .provideLayer(ref >>> EntriesRepositoryLive.layer)
+  val pgLayer = configLayer.project { config =>
+    Transactor.fromDriverManager[Task](
+      "org.postgresql.Driver",
+      config.database.url,
+      config.database.user,
+      config.database.password
+    )
+  }
+
+  def run = (for {
+    config <- ZIO.service[Config]
+    entriesRepository <- ZIO.service[EntriesRepository]
+    httpRoutes = routes(entriesRepository)
+    httpApp <- ZIO
+      .runtime
+      .flatMap { runtime =>
+        BlazeServerBuilder[Task]
+          .withExecutionContext(runtime.executor.asExecutionContext)
+          .bindHttp(config.port, config.host)
+          .withHttpApp(httpRoutes.orNotFound)
+          .serve
+          .compile
+          .drain
+      }
+  } yield httpApp)
+    .exitCode
+    .provideLayer(configLayer ++ pgLayer >+> PgEntriesRepository.layer)
 
   private val dsl = Http4sDsl[Task]
   import dsl.*

@@ -2,30 +2,54 @@
 
 @(entityIds: List[UUID], errorOpt: Option[String])
 
-<h1>Entities</h1>
+@views.html.layout("", errorOpt) {
+  <h1 class="mb-5">New secret</h1>
 
-@for(error <- errorOpt) {
   <div>
-  @error
+    <form action="/" method="POST">
+      <div class="mb-3">
+        <ul class="nav nav-pills">
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="#">Text</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#">Link</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link disabled">Password</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link disabled">File</a>
+          </li>
+        </ul>
+      </div>
+      <div class="mb-3">
+        <textarea class="form-control"  id="value" name="value" rows="5"></textarea>
+      </div>
+      <div class="mb-3 text-end">
+        <div class="row">
+          <label class="col-form-label col-sm">Delete</label>
+          <div class="col-sm-2">
+            <select class="form-select">
+              <option value="never" selected>Never</option>
+              <option value="immediately">Immediately</option>
+              <option value="month">After 1 month</option>
+              <option value="year">After 1 year</option>
+            </select>
+          </div>
+          <div class="col-sm-auto">
+            <button class="btn btn-primary">Create</button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div>
+  @for(entityId <- entityIds) {
+    <div>
+      <a href="/@entityId">@entityId</a>
+    </div>
+  }
   </div>
 }
-
-<div>
-  <form action="/" method="POST">
-    <div>
-      <label for="value">Text</label>
-      <textarea id="value" name="value" rows="5" cols="33"></textarea>
-    </div>
-    <div>
-      <button class="btn btn-primary">Send</button>
-    </div>
-  </form>
-</div>
-
-<div>
-@for(entityId <- entityIds) {
-  <div>
-    <a href="/@entityId">@entityId</a>
-  </div>
-}
-</div>
